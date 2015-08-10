@@ -199,7 +199,7 @@ Your new password is: ${ password }")))
 	  ((not (string= new-password confirm-password)) (err "cpw"))
           ((check-password password *account*)
            (let ((salt     (make-random-string 50)))
-	     (update-account account
+	     (update-account *account*
 			     account-password-digest (password-digest new-password salt)
 			     account-password-salt   salt))
 	   #/site/preferences-ok?what=Password)
@@ -209,26 +209,29 @@ Your new password is: ${ password }")))
   (if *account*
       (progn
 	#H[<h3>Change account preferences</h3>
-	<h2>Change password</h2>
         <form id="changepassword" class="prefs" method="post"
               action="$(#/site/change-password)">
+	<fieldset class="prefs">
+	<legend>Password</legend>
         <dl>]
           (maybe-show-form-error error "npw" "Bad password")
           #H[<dt><label for="new-password">New password:</label></dt>
           <dd><input class="regin" type="password" name="new-password" title="new password" /></dd>]
 	  (maybe-show-form-error error "cpw" "Different passwords")
-          #H[<dt><label for="confirm-password">New password:</label></dt>
+          #H[<dt><label for="confirm-password">Confirm password:</label></dt>
           <dd><input class="regin" type="password" name="confirm-password" title="confirm password" /></dd>]
 	  (maybe-show-form-error error "opw" "Wrong password")
           #H[<dt><label for="password">Old password:</label></dt>
           <dd><input class="regin" type="password" name="password" /></dd>
           <dt /><dd><input type="submit" value="change password" /></dd>
         </dl>
-      </form>]
+	</fieldset>
+	</form>]
 
-      <h2>Change email</h2>
-      #H[<form id="changemail" class="prefs" method="post"
+	#H[<form id="changemail" class="prefs" method="post"
               action="$(#/site/change-email)">
+	<fieldset class="prefs">
+	<legend>Email</legend>
         <dl>]
           (maybe-show-form-error error "email" "Bad email address")
           #H[<dt><label for="email">New email:</label></dt>
@@ -239,7 +242,8 @@ Your new password is: ${ password }")))
           <dd><input class="regin" type="password" name="password" /></dd>
           <dt /><dd><input type="submit" value="change email" /></dd>
         </dl>
-      </form>])
+	</fieldset>
+	</form>])
       (redirect #/)))
 
 ;;; moderation
