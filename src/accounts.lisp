@@ -65,6 +65,9 @@
   </form>
 </div>])))
 
+(defun password? (pw)
+  (and pw (not (< (length pw) 8))))
+
 (defun email-address? (str)
   (and str (not (string= str ""))))
 
@@ -84,7 +87,7 @@
       ((cond ((or (not name) (string= name "")) "name")
              ((find-account name)               "nametaken")
              ((not (email-address? email))      "email")
-             ((< (length password) 8)           "password")
+             ((not (password? password))        "password")
              ((not (check-captcha))             "captcha"))
        #/site/register?name={name}&email={email}&error={it})
       (t (login (new-account (cut-whitespace name) email password))
@@ -177,8 +180,8 @@ Your new password is: ${ password }")))
 
 ;;; user preferences
 
-(defpage /site/preferences-ok "Preferences updated" ()
-  #H[Email updated successfully])
+(defpage /site/preferences-ok "Preferences updated" (what)
+  #H[${what} updated successfully])
 
 (defhandler /site/change-email (email password)
   (flet ((err (e) #/site/preferences?email={email}&error={e}))
@@ -186,14 +189,45 @@ Your new password is: ${ password }")))
           ((not (email-address? email))             (err "email"))
           ((check-password password *account*)
            (update-account *account*
-                           account-email email)     #/site/preferences-ok)
+                           account-email email)     #/site/preferences-ok?what=Email)
           (t                                        (err "pw")))))
+
+(defhandler /site/change-password (new-password confirm-password password)
+  (flet ((err (e) #/site/preferences?error={e}))
+    (cond ((not *account*)                          #/)
+          ((not (password? new-password))             (err "npw"))
+	  ((not (string= new-password confirm-password)) (err "cpw"))
+          ((check-password password *account*)
+           (let ((salt     (make-random-string 50)))
+	     (update-account account
+			     account-password-digest (password-digest new-password salt)
+			     account-password-salt   salt))
+	   #/site/preferences-ok?what=Password)
+          (t                                        (err "opw")))))
 
 (defpage /site/preferences "Account preferences" (email error)
   (if *account*
       (progn
-        #H[<h3>Change account preferences</h3>
-        <form id="changemail" class="prefs" method="post"
+	#H[<h3>Change account preferences</h3>
+	<h2>Change password</h2>
+        <form id="changepassword" class="prefs" method="post"
+              action="$(#/site/change-password)">
+        <dl>]
+          (maybe-show-form-error error "npw" "Bad password")
+          #H[<dt><label for="new-password">New password:</label></dt>
+          <dd><input class="regin" type="password" name="new-password" title="new password" /></dd>]
+	  (maybe-show-form-error error "cpw" "Different passwords")
+          #H[<dt><label for="confirm-password">New password:</label></dt>
+          <dd><input class="regin" type="password" name="confirm-password" title="confirm password" /></dd>]
+	  (maybe-show-form-error error "opw" "Wrong password")
+          #H[<dt><label for="password">Old password:</label></dt>
+          <dd><input class="regin" type="password" name="password" /></dd>
+          <dt /><dd><input type="submit" value="change password" /></dd>
+        </dl>
+      </form>]
+
+      <h2>Change email</h2>
+      #H[<form id="changemail" class="prefs" method="post"
               action="$(#/site/change-email)">
         <dl>]
           (maybe-show-form-error error "email" "Bad email address")
@@ -201,7 +235,7 @@ Your new password is: ${ password }")))
           <dd><input class="regin" type="text" name="email" title="new email"
                      value="${(if email email "")}" /></dd>]
           (maybe-show-form-error error "pw" "Wrong password")
-          #H[<dt><label for="password">Confirm password:</label></dt>
+          #H[<dt><label for="password">Enter password:</label></dt>
           <dd><input class="regin" type="password" name="password" /></dd>
           <dt /><dd><input type="submit" value="change email" /></dd>
         </dl>
